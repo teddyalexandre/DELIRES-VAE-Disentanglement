@@ -27,7 +27,8 @@ class FactorVAE_Encoder(nn.Module) :
         self.conv3 = nn.Conv2d(self.h_dim1, self.h_dim2, kernel_size = self.kernel_size, stride = self.stride) #input channels to define
         self.conv4 = nn.Conv2d(self.h_dim2, self.h_dim2, kernel_size = self.kernel_size, stride = self.stride) #input channels to define
         self.fc1 = nn.Linear(self.h_dim2 * self.input_dim / (self.stride)**4 , self.fc_dim) 
-        self.fc2 = nn.Linear(self.fc_dim, 2 * self.output_dim) # return mean and var (diagonal vector)
+        self.fc21 = nn.Linear(self.fc_dim, self.output_dim) # return mean 
+        self.fc22 = nn.Linear(self.fc_dim, self.output_dim) # return log_var (diagonal) 
 
 
     def forward(self, x) : 
@@ -43,8 +44,9 @@ class FactorVAE_Encoder(nn.Module) :
         x = F.relu(self.conv3(x))
         x = F.relu(self.conv4(x))
         x = self.fc1(x)
-        x = self.fc2(x)
-        return x
+        mu = self.fc21(x)
+        log_var = self.fc22(x)
+        return mu, log_var
 
 class FactorVAE_Decoder(nn.Module) : 
     def __init__(self, 
@@ -81,7 +83,7 @@ class FactorVAE_Decoder(nn.Module) :
         x = F.relu(self.upconv2(x))
         x = F.relu(self.upconv3(x))
         x = F.relu(self.upconv4(x))
-        return x
+        return F.sigmoid(x) # return logits
                  
 
 class FactorVAE(nn.Module):
@@ -112,16 +114,40 @@ class FactorVAE(nn.Module):
         self.encoder = FactorVAE_Encoder(input_dim, h_dim1, h_dim2, kernel_size, stride, fc_dim, output_dim)
         self.decoder = FactorVAE_Decoder(output_dim, h_dim2, h_dim1, kernel_size, stride, fc_dim, input_dim)
     
-    def forward(self, x) : 
-        encoded = self.encoder(x)
-        decoded = self.decoder(encoded)
-        return decoded
+    def encode(self, x) : 
+        return self.encoder(x)
+    
+    def decode(self, z) : 
+        return self.decoder(z)
+
+    def loss_function(self, x, z, gamma) : # TODO
+        pass 
     
 
 class Discriminator(nn.Module) : 
     def __init__(self, 
+                 input_size, # 10
+                 hidden_dim, # 1000
+                 output_size # 2
                 ):
         super(Discriminator, self).__init__()
     
+        self.input_size = input_size
+        self.hidden_dim = hidden_dim
+        self.output_size = output_size
+
+        self.fc1 = nn.Linear(self.input_size, self.hidden_dim)
+        self.fc2 = nn.Linear(self.hidden_dim, self.hidden_dim)
+        self.fc3 = nn.Linear(self.hidden_dim, self.hidden_dim)
+        self.fc4 = nn.Linear(self.hidden_dim, self.hidden_dim)
+        self.fc5 = nn.Linear(self.hidden_dim, self.hidden_dim)
+        self.fc6 = nn.Linear(self.hidden_dim, self.output_size)
+
     def forward(self, x) : 
-        pass
+        x = F.leaky_relu(self.fc1(x))
+        x = F.leaky_relu(self.fc2(x))
+        x = F.leaky_relu(self.fc3(x))
+        x = F.leaky_relu(self.fc4(x))
+        x = F.leaky_relu(self.fc5(x))
+        x = F.leaky_relu(self.fc6(x))
+        return F.sigmoid(x) # return logits 
