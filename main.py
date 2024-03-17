@@ -64,7 +64,7 @@ def main(dataset_path, batch_size) :
     #Training loop
     nb_epochs = 100
 
-    for epoch in nb_epochs : 
+    for epoch in range(nb_epochs) : 
 
         print(f'========== EPOCH {epoch} ============ ')
         epoch_vae_loss = 0
@@ -115,7 +115,7 @@ def main(dataset_path, batch_size) :
 if __name__ == '__main__' : 
     parser = argparse.ArgumentParser()
     parser.add_argument('-batch_size', default = 64)
-    parser.add_argument('-dataset_path', default = 'C:\Users\Utilisateur\Documents\MVA\DELIRES\Projet\DELIRES-VAE-Disentanglement\dsprites-dataset\dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz')
+    parser.add_argument('-dataset_path', default = './dsprites-dataset/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz')
 
     args = parser.parse_args()
     main(args.dataset_path, args.batch_size)

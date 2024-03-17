@@ -30,7 +30,7 @@ def get_dataloaders(dataset_path, batch_size = 64) :
     # Load dataset
     dataset_zip = np.load(dataset_path, encoding='bytes')
     imgs = dataset_zip['imgs']
-    imgs_train, imgs_test = random_split(imgs)
+    imgs_train, imgs_test = random_split(imgs, lengths=(0.7, 0.3))
 
     # Build dataset
     train_dataset = dSpritesDataset(imgs_train, transform = transform)

@@ -26,7 +26,7 @@ class FactorVAE_Encoder(nn.Module) :
         self.conv2 = nn.Conv2d(self.h_dim1, self.h_dim1, kernel_size = self.kernel_size, stride = self.stride) #input channels to define
         self.conv3 = nn.Conv2d(self.h_dim1, self.h_dim2, kernel_size = self.kernel_size, stride = self.stride) #input channels to define
         self.conv4 = nn.Conv2d(self.h_dim2, self.h_dim2, kernel_size = self.kernel_size, stride = self.stride) #input channels to define
-        self.fc1 = nn.Linear(self.h_dim2 * self.input_dim / (self.stride)**4 , self.fc_dim) 
+        self.fc1 = nn.Linear(int(self.h_dim2 * self.input_dim / (self.stride)**4) , self.fc_dim) 
         self.fc21 = nn.Linear(self.fc_dim, self.output_dim) # return mean 
         self.fc22 = nn.Linear(self.fc_dim, self.output_dim) # return log_var (diagonal) 
 
@@ -38,12 +38,12 @@ class FactorVAE_Encoder(nn.Module) :
         - 3D shapes, CelebA, chairs data: 64*64*3 (RGB images)
         - 3D faces data: 64*64*1 (greyscale images)
         '''
-        x = torch.permute(x, (2, 0, 1)) # put channels dimension to first dimension
+        #x = torch.permute(x, (0, 3, 1, 2)) # put channels dimension to first dimension
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
         x = F.relu(self.conv4(x))
-        x = self.fc1(x)
+        x = self.fc1(x.reshape(x.shape[0], -1))
         mu = self.fc21(x)
         log_var = self.fc22(x)
         return mu, log_var
