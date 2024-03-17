@@ -113,15 +113,22 @@ class FactorVAE(nn.Module):
 
         self.encoder = FactorVAE_Encoder(input_dim, h_dim1, h_dim2, kernel_size, stride, fc_dim, output_dim)
         self.decoder = FactorVAE_Decoder(output_dim, h_dim2, h_dim1, kernel_size, stride, fc_dim, input_dim)
+   
+    def sampling(self, mu, log_var) : 
+        std = torch.sqrt(torch.exp(log_var)) 
+        eps = torch.randn(std.shape) 
+        return eps.mul(std).add_(mu) 
     
-    def encode(self, x) : 
-        return self.encoder(x)
-    
-    def decode(self, z) : 
-        return self.decoder(z)
+    def forward(self, x) : 
+        z_mu, z_log_var = self.encoder(x)
+        z = self.sampling(z_mu, z_log_var)
+        return self.decoder(z), z_mu, z_log_var
 
-    def loss_function(self, x, z, gamma) : # TODO
-        pass 
+
+    def loss_function(self, x, y, mu, log_var) : 
+        reconstruction_error = torch.nn.BCELoss(reduction = 'sum')(y, x) 
+        KLD = 0.5 * torch.sum(torch.exp(log_var) + mu.pow(2) - log_var - 1) 
+        return reconstruction_error + KLD
     
 
 class Discriminator(nn.Module) : 
@@ -143,11 +150,14 @@ class Discriminator(nn.Module) :
         self.fc5 = nn.Linear(self.hidden_dim, self.hidden_dim)
         self.fc6 = nn.Linear(self.hidden_dim, self.output_size)
 
-    def forward(self, x) : 
-        x = F.leaky_relu(self.fc1(x))
+    def forward(self, z) : 
+        x = F.leaky_relu(self.fc1(z))
         x = F.leaky_relu(self.fc2(x))
         x = F.leaky_relu(self.fc3(x))
         x = F.leaky_relu(self.fc4(x))
         x = F.leaky_relu(self.fc5(x))
         x = F.leaky_relu(self.fc6(x))
         return F.sigmoid(x) # return logits 
+    
+    def discr_loss(self, Dz, Dz_perm) :
+        return 0.5*(torch.log(Dz) + torch.log(1 - Dz_perm)).mean()

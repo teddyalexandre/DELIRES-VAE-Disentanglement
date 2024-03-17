@@ -2,8 +2,10 @@ from src.FactorVAE import FactorVAE, Discriminator
 from src.dSpritesDataset import get_dataloaders
 import argparse
 
+import torch
 from torch.optim import AdamW
 import numpy as np
+
 
 
 def permute_dims(z) : 
@@ -26,7 +28,7 @@ def permute_dims(z) :
 def main(dataset_path, batch_size) : 
     
     # Get dataloaders
-    train_dataloader, test_dataloader = get_dataloaders(dataset_path, batch_size)
+    train_dataloader, test_dataloader = get_dataloaders(dataset_path, 2*batch_size)
 
     # Define FactorVAE 
     input_dim = 64
@@ -63,25 +65,50 @@ def main(dataset_path, batch_size) :
     nb_epochs = 100
 
     for epoch in nb_epochs : 
-        for batch in train_dataloader : 
-            mu, log_var = factorvae.encode(batch)
-            pass # TODO
 
+        print(f'========== EPOCH {epoch} ============ ')
+        epoch_vae_loss = 0
+        epoch_discr_loss = 0
 
+        for double_batch in train_dataloader : 
+            # Split the double batch into two batches
+            batch1, batch2 = torch.split(double_batch, batch_size, 0)
 
+            # Sample z on the first batch
+            y, z_mu, z_log_var = factorvae(batch1)
+            z_sample = factorvae.sampling(z_mu, z_log_var)
 
+            # Get VAE loss for the first batch
+            discr_z1 = discriminator(z_sample)
+            gamma_term = torch.log(discr_z1 / (1 - discr_z1)).mean()
+            vae_loss = factorvae.loss_function(batch1, y, z_mu, z_log_var) + gamma * gamma_term
+            epoch_vae_loss += vae_loss.item()
 
+            # Optimization of VAE loss
+            vae_opti.zero_grad()
+            vae_loss.backward()
+            vae_opti.step()
 
+            # Sample z on the second batch
+            y, z_mu, z_log_var = factorvae(batch2)
+            z_sample = factorvae.sampling(z_mu, z_log_var)
 
+            # Permute z
+            z_permuted = permute_dims(z_sample)
 
+            # Loss of the discriminator
+            discr_z2 = discriminator(z_permuted)
+            discr_loss = discriminator.discr_loss(discr_z1, discr_z2)
+            epoch_discr_loss += discr_loss.item()
 
+            # Optimization of Discriminator loss
+            discr_opti.zero_grad()
+            discr_loss.backward()
+            discr_opti.step()
 
-
-
-
-
-
-
+        epoch_vae_loss /= len(train_dataloader)
+        epoch_discr_loss /= len(train_dataloader) 
+        print('VAE loss: {epoch_vae_loss:.2f}; Discriminator loss: {epoch_discr_loss:.2f}')
 
 
 
