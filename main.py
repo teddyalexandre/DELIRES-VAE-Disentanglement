@@ -2,8 +2,10 @@ from src.FactorVAE import FactorVAE, Discriminator
 from src.dSpritesDataset import get_dataloaders
 import argparse
 
+#import matplotlib.pyplot as plt
 import torch
 from torch.optim import AdamW
+from torch import autograd
 import numpy as np
 
 
@@ -13,7 +15,8 @@ def permute_dims(z) :
     Implementation of the algorithm 1 'permute_dims'
     Input: z_i for i = 1, ..., B. z_i of dimension d (here z of dimension (B, d))
     '''
-    B, d = z.shape()
+    B = z.size()[0]
+    d = z.size()[1]
 
     for j in range(d) : 
         pi = np.random.permutation(B)
@@ -70,7 +73,12 @@ def main(dataset_path, batch_size) :
         epoch_vae_loss = 0
         epoch_discr_loss = 0
 
-        for double_batch in train_dataloader : 
+        print(len(train_dataloader))
+        for i, double_batch in enumerate(train_dataloader) : 
+            if i % 100 == 0 : 
+                print(i)
+                print(f'Current epoch VAE loss: {epoch_vae_loss}')
+                print(f'Current epoch Discr loss: {epoch_discr_loss}')
             # Split the double batch into two batches
             batch1, batch2 = torch.split(double_batch, batch_size, 0)
 
@@ -80,31 +88,43 @@ def main(dataset_path, batch_size) :
 
             # Get VAE loss for the first batch
             discr_z1 = discriminator(z_sample)
-            gamma_term = torch.log(discr_z1 / (1 - discr_z1)).mean()
+            #gamma_term = torch.log(discr_z1[:,0] / discr_z1[:,1]).mean()
+            gamma_term = (discr_z1[:,0] - discr_z1[:,1]).mean()
             vae_loss = factorvae.loss_function(batch1, y, z_mu, z_log_var) + gamma * gamma_term
             epoch_vae_loss += vae_loss.item()
 
-            # Optimization of VAE loss
-            vae_opti.zero_grad()
-            vae_loss.backward()
-            vae_opti.step()
+            # # Optimization of VAE loss
+            # vae_opti.zero_grad()
+            # vae_loss.backward(retain_graph = True)
+            # vae_opti.step()
 
             # Sample z on the second batch
-            y, z_mu, z_log_var = factorvae(batch2)
-            z_sample = factorvae.sampling(z_mu, z_log_var)
+            y2, z_mu2, z_log_var2 = factorvae(batch2)
+            z_sample2 = factorvae.sampling(z_mu2, z_log_var2)
 
             # Permute z
-            z_permuted = permute_dims(z_sample)
+            z_permuted = permute_dims(z_sample2).detach()
 
             # Loss of the discriminator
             discr_z2 = discriminator(z_permuted)
-            discr_loss = discriminator.discr_loss(discr_z1, discr_z2)
+            #discr_z1_copy = discr_z1.clone().detach()
+            discr_z1_copy = discr_z1.clone()
+            discr_loss = discriminator.discr_loss(discr_z1_copy, discr_z2)
             epoch_discr_loss += discr_loss.item()
 
-            # Optimization of Discriminator loss
+            # # Optimization of Discriminator loss
+            # discr_opti.zero_grad()
+            # discr_loss.backward()
+            # discr_opti.step()
+
+            # Optimization of boss losses
+            vae_opti.zero_grad()
             discr_opti.zero_grad()
-            discr_loss.backward()
+            total_loss = vae_loss + discr_loss
+            total_loss.backward()
+            vae_opti.step()
             discr_opti.step()
+
 
         epoch_vae_loss /= len(train_dataloader)
         epoch_discr_loss /= len(train_dataloader) 

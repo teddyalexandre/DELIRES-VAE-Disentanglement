@@ -70,10 +70,10 @@ class FactorVAE_Decoder(nn.Module) :
 
         self.fc1 = nn.Linear(self.input_dim, self.fc_dim)
         self.fc2 = nn.Linear(self.fc_dim, self.h_dim1 * self.kernel_size[0] * self.kernel_size[1])
-        self.upconv1 = nn.ConvTranspose2d(self.h_dim1, self.h_dim1, kernel_size = self.kernel_size, stride = self.stride)
-        self.upconv2 = nn.ConvTranspose2d(self.h_dim1, self.h_dim2, kernel_size = self.kernel_size, stride = self.stride)
-        self.upconv3 = nn.ConvTranspose2d(self.h_dim2, self.h_dim2, kernel_size = self.kernel_size, stride = self.stride)
-        self.upconv4 = nn.ConvTranspose2d(self.h_dim2, 1, kernel_size = self.kernel_size, stride = self.stride)
+        self.upconv1 = nn.ConvTranspose2d(self.h_dim1, self.h_dim1, kernel_size = self.kernel_size, stride = self.stride, padding = 1)
+        self.upconv2 = nn.ConvTranspose2d(self.h_dim1, self.h_dim2, kernel_size = self.kernel_size, stride = self.stride, padding = 1)
+        self.upconv3 = nn.ConvTranspose2d(self.h_dim2, self.h_dim2, kernel_size = self.kernel_size, stride = self.stride, padding = 1)
+        self.upconv4 = nn.ConvTranspose2d(self.h_dim2, 1, kernel_size = self.kernel_size, stride = self.stride, padding = 1)
 
     def forward(self, x) : 
         x = F.relu(self.fc1(x))
@@ -126,8 +126,8 @@ class FactorVAE(nn.Module):
 
 
     def loss_function(self, x, y, mu, log_var) : 
-        reconstruction_error = torch.nn.BCELoss(reduction = 'sum')(y, x) 
-        KLD = 0.5 * torch.sum(torch.exp(log_var) + mu.pow(2) - log_var - 1) 
+        reconstruction_error = torch.nn.BCELoss(reduction = 'mean')(y, x) # mean ou sum ?
+        KLD = 0.5 * torch.mean(torch.exp(log_var) + mu.pow(2) - log_var - 1) # mean ou sum ?
         return reconstruction_error + KLD
     
 
@@ -135,13 +135,15 @@ class Discriminator(nn.Module) :
     def __init__(self, 
                  input_size, # 10
                  hidden_dim, # 1000
-                 output_size # 2
+                 output_size, # 2
+                 batch_size = 64
                 ):
         super(Discriminator, self).__init__()
     
         self.input_size = input_size
         self.hidden_dim = hidden_dim
         self.output_size = output_size
+        self.batch_size = batch_size
 
         self.fc1 = nn.Linear(self.input_size, self.hidden_dim)
         self.fc2 = nn.Linear(self.hidden_dim, self.hidden_dim)
@@ -160,4 +162,6 @@ class Discriminator(nn.Module) :
         return F.sigmoid(x) # return logits 
     
     def discr_loss(self, Dz, Dz_perm) :
-        return 0.5*(torch.log(Dz) + torch.log(1 - Dz_perm)).mean()
+        zeros = torch.zeros(self.batch_size, dtype=torch.long)
+        ones = torch.ones(self.batch_size, dtype=torch.long)
+        return 0.5*(F.cross_entropy(Dz, zeros) + F.cross_entropy(Dz_perm, ones))
