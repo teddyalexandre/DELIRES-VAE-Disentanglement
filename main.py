@@ -1,12 +1,15 @@
 from src.FactorVAE import FactorVAE, Discriminator
 from src.dSpritesDataset import get_dataloaders
+
 import argparse
+import numpy as np
+import os
 
 #import matplotlib.pyplot as plt
 import torch
 from torch.optim import AdamW
 from torch import autograd
-import numpy as np
+
 
 
 
@@ -28,7 +31,7 @@ def permute_dims(z) :
 
 
 
-def main(dataset_path, batch_size) : 
+def main(dataset_path, batch_size, save_model_path) : 
     
     # Get dataloaders
     train_dataloader, test_dataloader = get_dataloaders(dataset_path, 2*batch_size)
@@ -70,15 +73,20 @@ def main(dataset_path, batch_size) :
     for epoch in range(nb_epochs) : 
 
         print(f'========== EPOCH {epoch} ============ ')
+
+        # Training mode
+        factorvae.train()
+        discriminator.train()
+
         epoch_vae_loss = 0
         epoch_discr_loss = 0
 
-        print(len(train_dataloader))
         for i, double_batch in enumerate(train_dataloader) : 
             if i % 100 == 0 : 
                 print(i)
                 print(f'Current epoch VAE loss: {epoch_vae_loss}')
                 print(f'Current epoch Discr loss: {epoch_discr_loss}')
+
             # Split the double batch into two batches
             batch1, batch2 = torch.split(double_batch, batch_size, 0)
 
@@ -128,7 +136,67 @@ def main(dataset_path, batch_size) :
 
         epoch_vae_loss /= len(train_dataloader)
         epoch_discr_loss /= len(train_dataloader) 
-        print('VAE loss: {epoch_vae_loss:.2f}; Discriminator loss: {epoch_discr_loss:.2f}')
+        print(f'Training : VAE loss: {epoch_vae_loss:.2f}; Discriminator loss: {epoch_discr_loss:.2f}')
+
+        # Evaluation time
+        print('Testing...')
+        factorvae.eval()
+        discriminator.eval()
+        test_epoch_vae_loss = 0
+        test_epoch_discr_loss = 0
+
+        for i, double_batch in enumerate(test_dataloader) : 
+            
+            if i % 100 == 0 : 
+                print(i)
+                print(f'Current test epoch VAE loss: {test_epoch_vae_loss}')
+                print(f'Current test epoch Discr loss: {test_epoch_discr_loss}')
+        
+            with torch.no_grad() : 
+                # Split the double batch into two batches
+                test_batch1, test_batch2 = torch.split(double_batch, batch_size, 0)
+
+                # Sample z on the first batch
+                test_y, test_z_mu, test_z_log_var = factorvae(test_batch1)
+                test_z_sample = factorvae.sampling(test_z_mu, test_z_log_var)
+
+                # Get VAE loss for the first batch
+                test_discr_z1 = discriminator(test_z_sample)
+                test_gamma_term = (test_discr_z1[:,0] - test_discr_z1[:,1]).mean()
+                test_vae_loss = factorvae.loss_function(test_batch1, test_y, test_z_mu, test_z_log_var) + gamma * test_gamma_term
+                test_epoch_vae_loss += test_vae_loss.item()
+
+                # Sample z on the second batch
+                test_y2, test_z_mu2, test_z_log_var2 = factorvae(test_batch2)
+                test_z_sample2 = factorvae.sampling(test_z_mu2, test_z_log_var2)
+
+                # Permute z
+                test_z_permuted = permute_dims(test_z_sample2).detach()
+
+                # Loss of the discriminator
+                test_discr_z2 = discriminator(test_z_permuted)
+                test_discr_z1_copy = test_discr_z1.clone()
+                test_discr_loss = discriminator.discr_loss(test_discr_z1_copy, test_discr_z2)
+                test_epoch_discr_loss += test_discr_loss.item()
+            
+        test_epoch_vae_loss /= len(test_dataloader)
+        test_epoch_discr_loss /= len(test_dataloader) 
+        print(f'Test : VAE loss: {test_epoch_vae_loss:.2f}; Discriminator loss: {test_epoch_discr_loss:.2f}')
+
+        # Save model checkpoint
+        print("SAVE MODEL")
+        torch.save({
+            'epoch': epoch,
+            'vae_state_dict': factorvae.state_dict(),
+            'discr_state_dict' : discriminator.state_dict(),
+            'opti_vae_state_dict': vae_opti.state_dict(),
+            'opti_discr_state_dict' : discr_opti.state_dict(),
+            'epoch_vae_loss': epoch_vae_loss,
+            'epoch_discr_loss' : epoch_discr_loss,
+            'test_epoch_vae_loss' : test_epoch_vae_loss,
+            'test_epoch_discr_loss' : test_epoch_discr_loss,
+        }, os.path.join(save_model_path, f"checkpoint_epoch_{epoch}.pth"))
+
 
 
 
@@ -136,6 +204,6 @@ if __name__ == '__main__' :
     parser = argparse.ArgumentParser()
     parser.add_argument('-batch_size', default = 64)
     parser.add_argument('-dataset_path', default = './dsprites-dataset/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz')
-
+    parser.add_argument('save_model_path', default = './models_checkpoints/factorvae')
     args = parser.parse_args()
-    main(args.dataset_path, args.batch_size)
+    main(args.dataset_path, args.batch_size, args.save_model_path)
