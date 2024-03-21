@@ -45,13 +45,13 @@ def main(dataset_path, batch_size, save_model_path, device = 'cpu') :
     fc_dim = 128
     output_dim = 10
     
-    factorvae = FactorVAE(input_dim, h_dim1, h_dim2, kernel_size, stride, fc_dim, output_dim).to(device)
+    factorvae = FactorVAE(input_dim, h_dim1, h_dim2, kernel_size, stride, fc_dim, output_dim, device).to(device)
 
     # Define discriminator
     hidden_dim = 1000
     output_discr = 2
 
-    discriminator = Discriminator(output_dim, hidden_dim, output_discr).to(device)
+    discriminator = Discriminator(device, output_dim, hidden_dim, output_discr).to(device)
 
     # Training parameters
     gamma = 0.2

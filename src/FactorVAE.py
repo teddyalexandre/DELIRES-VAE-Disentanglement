@@ -134,12 +134,11 @@ class FactorVAE(nn.Module):
     
 
 class Discriminator(nn.Module) : 
-    def __init__(self, 
+    def __init__(self, device,
                  input_size, # 10
                  hidden_dim, # 1000
                  output_size, # 2
-                 batch_size = 64,
-                 device
+                 batch_size = 64
                 ):
         super(Discriminator, self).__init__()
     
