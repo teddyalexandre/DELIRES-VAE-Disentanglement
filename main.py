@@ -31,7 +31,7 @@ def permute_dims(z) :
 
 
 
-def main(dataset_path, batch_size, save_model_path) : 
+def main(dataset_path, batch_size, save_model_path, device = 'cpu') : 
     
     # Get dataloaders
     train_dataloader, test_dataloader = get_dataloaders(dataset_path, 2*batch_size)
@@ -45,13 +45,13 @@ def main(dataset_path, batch_size, save_model_path) :
     fc_dim = 128
     output_dim = 10
     
-    factorvae = FactorVAE(input_dim, h_dim1, h_dim2, kernel_size, stride, fc_dim, output_dim)
+    factorvae = FactorVAE(input_dim, h_dim1, h_dim2, kernel_size, stride, fc_dim, output_dim).to(device)
 
     # Define discriminator
     hidden_dim = 1000
     output_discr = 2
 
-    discriminator = Discriminator(output_dim, hidden_dim, output_discr)
+    discriminator = Discriminator(output_dim, hidden_dim, output_discr).to(device)
 
     # Training parameters
     gamma = 0.2
@@ -88,6 +88,7 @@ def main(dataset_path, batch_size, save_model_path) :
                 print(f'Current epoch Discr loss: {epoch_discr_loss}')
 
             # Split the double batch into two batches
+            double_batch = double_batch.to(device)
             batch1, batch2 = torch.split(double_batch, batch_size, 0)
 
             # Sample z on the first batch
@@ -145,7 +146,7 @@ def main(dataset_path, batch_size, save_model_path) :
         test_epoch_vae_loss = 0
         test_epoch_discr_loss = 0
 
-        for i, double_batch in enumerate(test_dataloader) : 
+        for i, test_double_batch in enumerate(test_dataloader) : 
             
             if i % 100 == 0 : 
                 print(i)
@@ -154,7 +155,8 @@ def main(dataset_path, batch_size, save_model_path) :
         
             with torch.no_grad() : 
                 # Split the double batch into two batches
-                test_batch1, test_batch2 = torch.split(double_batch, batch_size, 0)
+                test_double_batch = test_double_batch.to(device)
+                test_batch1, test_batch2 = torch.split(test_double_batch, batch_size, 0)
 
                 # Sample z on the first batch
                 test_y, test_z_mu, test_z_log_var = factorvae(test_batch1)
