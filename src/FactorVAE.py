@@ -98,7 +98,8 @@ class FactorVAE(nn.Module):
                 kernel_size,
                 stride,
                 fc_dim,
-                output_dim
+                output_dim,
+                device
                 ):
         super(FactorVAE, self).__init__()
 
@@ -110,13 +111,14 @@ class FactorVAE(nn.Module):
         self.stride = stride # 2
         self.fc_dim = fc_dim # 128
         self.output_dim = output_dim # 10
+        self.device = device
 
         self.encoder = FactorVAE_Encoder(input_dim, h_dim1, h_dim2, kernel_size, stride, fc_dim, output_dim)
         self.decoder = FactorVAE_Decoder(output_dim, h_dim2, h_dim1, kernel_size, stride, fc_dim, input_dim)
    
     def sampling(self, mu, log_var) : 
         std = torch.sqrt(torch.exp(log_var)) 
-        eps = torch.randn(std.shape) 
+        eps = torch.randn(std.shape).to(self.device)
         return eps.mul(std).add_(mu) 
     
     def forward(self, x) : 
@@ -126,7 +128,7 @@ class FactorVAE(nn.Module):
 
 
     def loss_function(self, x, y, mu, log_var) : 
-        reconstruction_error = torch.nn.BCELoss(reduction = 'mean')(y, x) # mean ou sum ?
+        reconstruction_error = torch.nn.BCELoss(reduction = 'mean')(y, x).to(self.device) # mean ou sum ?
         KLD = 0.5 * torch.mean(torch.exp(log_var) + mu.pow(2) - log_var - 1) # mean ou sum ?
         return reconstruction_error + KLD
     
@@ -136,7 +138,8 @@ class Discriminator(nn.Module) :
                  input_size, # 10
                  hidden_dim, # 1000
                  output_size, # 2
-                 batch_size = 64
+                 batch_size = 64,
+                 device
                 ):
         super(Discriminator, self).__init__()
     
@@ -144,6 +147,7 @@ class Discriminator(nn.Module) :
         self.hidden_dim = hidden_dim
         self.output_size = output_size
         self.batch_size = batch_size
+        self.device = device
 
         self.fc1 = nn.Linear(self.input_size, self.hidden_dim)
         self.fc2 = nn.Linear(self.hidden_dim, self.hidden_dim)
@@ -162,6 +166,6 @@ class Discriminator(nn.Module) :
         return F.sigmoid(x) # return logits 
     
     def discr_loss(self, Dz, Dz_perm) :
-        zeros = torch.zeros(self.batch_size, dtype=torch.long)
+        zeros = torch.zeros(self.batch_size, dtype=torch.long).to(self.device)
         ones = torch.ones(self.batch_size, dtype=torch.long)
         return 0.5*(F.cross_entropy(Dz, zeros) + F.cross_entropy(Dz_perm, ones))
