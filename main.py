@@ -207,5 +207,6 @@ if __name__ == '__main__' :
     parser.add_argument('-batch_size', default = 64)
     parser.add_argument('-dataset_path', default = './dsprites-dataset/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz')
     parser.add_argument('-save_model_path', default = './models_checkpoints/factorvae')
+    parser.add_argument('-device', default = 'cpu')
     args = parser.parse_args()
-    main(args.dataset_path, args.batch_size, args.save_model_path)
+    main(args.dataset_path, args.batch_size, args.save_model_path, args.device)
