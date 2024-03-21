@@ -167,5 +167,5 @@ class Discriminator(nn.Module) :
     
     def discr_loss(self, Dz, Dz_perm) :
         zeros = torch.zeros(self.batch_size, dtype=torch.long).to(self.device)
-        ones = torch.ones(self.batch_size, dtype=torch.long)
+        ones = torch.ones(self.batch_size, dtype=torch.long).to(self.device)
         return 0.5*(F.cross_entropy(Dz, zeros) + F.cross_entropy(Dz_perm, ones))
