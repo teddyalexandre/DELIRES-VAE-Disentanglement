@@ -82,7 +82,9 @@ class FactorVAE_Decoder(nn.Module) :
         x = F.relu(self.upconv1(x))
         x = F.relu(self.upconv2(x))
         x = F.relu(self.upconv3(x))
-        x = F.relu(self.upconv4(x))
+        x = self.upconv4(x)
+        # print("avant sigmoid unique")
+        # print(x.unique())
         return F.sigmoid(x) # return logits
                  
 
@@ -124,12 +126,15 @@ class FactorVAE(nn.Module):
     def forward(self, x) : 
         z_mu, z_log_var = self.encoder(x)
         z = self.sampling(z_mu, z_log_var)
-        return self.decoder(z), z_mu, z_log_var
+        y = self.decoder(z)
+        return y, z_mu, z_log_var
 
 
     def loss_function(self, x, y, mu, log_var) : 
-        reconstruction_error = torch.nn.BCELoss(reduction = 'mean')(y, x).to(self.device) # mean ou sum ?
-        KLD = 0.5 * torch.mean(torch.exp(log_var) + mu.pow(2) - log_var - 1) # mean ou sum ?
+        reconstruction_error = F.binary_cross_entropy(y, x, reduction='sum')  # the output has sigmoid, so we use basic BCE
+        KLD = -0.5 * torch.sum(1 + log_var - mu.pow(2) - log_var.exp())
+        # reconstruction_error = torch.nn.BCELoss(reduction = 'mean')(y, x).to(self.device) # mean ou sum ?
+        # KLD = 0.5 * torch.mean(torch.exp(log_var) + mu.pow(2) - log_var - 1) # mean ou sum ?
         return reconstruction_error + KLD
     
 
@@ -165,6 +170,6 @@ class Discriminator(nn.Module) :
         return F.sigmoid(x) # return logits 
     
     def discr_loss(self, Dz, Dz_perm) :
-        zeros = torch.zeros(self.batch_size, dtype=torch.long).to(self.device)
-        ones = torch.ones(self.batch_size, dtype=torch.long).to(self.device)
+        zeros = torch.zeros(Dz.shape[0], dtype=torch.long).to(self.device)
+        ones = torch.ones(Dz_perm.shape[0], dtype=torch.long).to(self.device)
         return 0.5*(F.cross_entropy(Dz, zeros) + F.cross_entropy(Dz_perm, ones))

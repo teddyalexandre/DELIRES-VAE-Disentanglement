@@ -30,6 +30,7 @@ def get_dataloaders(dataset_path, batch_size = 64) :
 
     transform = transforms.Compose([
         transforms.ToTensor(),
+        RescaleBinaryImage()
     ])
 
     # Load dataset
@@ -42,12 +43,9 @@ def get_dataloaders(dataset_path, batch_size = 64) :
     dsprites_small = random_split(dsprites, [subset_size, len(imgs)-subset_size])[0]
     imgs_train, imgs_test = random_split(dsprites_small, [0.8, 0.2])
 
-    # Build dataset
-    train_dataset = dSpritesDataset(imgs_train, transform = transform)
-    test_dataset = dSpritesDataset(imgs_test, transform = transform)
 
     # Build dataloaders
-    train_dataloader = DataLoader(train_dataset, batch_size = batch_size, shuffle = True)
-    test_dataloader = DataLoader(test_dataset, batch_size = batch_size, shuffle = True)
+    train_dataloader = DataLoader(imgs_train, batch_size = batch_size, shuffle = True)
+    test_dataloader = DataLoader(imgs_test, batch_size = batch_size, shuffle = True)
 
     return train_dataloader, test_dataloader

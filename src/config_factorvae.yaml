@@ -3,7 +3,7 @@ gamma: 0.2
 nb_epochs: 100
 batch_size: 64
 
-save_model_path: '/models_checkpoints/factorvae/try_step'
+save_model_path: '/models_checkpoints/factorvae/without_discr'
 dataset_path: '/dsprites-dataset/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz'
 
 factorvae: 
@@ -15,7 +15,7 @@ factorvae:
   fc_dim: 128
   output_dim: 10
   batch_size: 64
-  vae_lr: 0.0001
+  vae_lr: 0.0001 # initially 0.0001
   vae_beta1: 0.9
   vae_beta2: 0.999
 

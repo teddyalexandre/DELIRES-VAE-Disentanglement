@@ -11,8 +11,7 @@ def train(factorvae, discriminator, vae_opti, discr_opti, train_dataloader, gamm
     epoch_discr_loss = 0
 
     for i, double_batch in enumerate(train_dataloader) : 
-        if i % 100 == 0 : 
-            print(i)
+        if i % 10 == 0 : 
             print(f'Current epoch VAE loss: {epoch_vae_loss}')
             print(f'Current epoch Discr loss: {epoch_discr_loss}')
 
@@ -26,7 +25,6 @@ def train(factorvae, discriminator, vae_opti, discr_opti, train_dataloader, gamm
 
         # Get VAE loss for the first batch
         discr_z1 = discriminator(z_sample)
-        #gamma_term = torch.log(discr_z1[:,0] / discr_z1[:,1]).mean()
         gamma_term = (discr_z1[:,0] - discr_z1[:,1]).mean()
         vae_loss = factorvae.loss_function(batch1, y, z_mu, z_log_var) + gamma * gamma_term
         epoch_vae_loss += vae_loss.item()
@@ -34,34 +32,26 @@ def train(factorvae, discriminator, vae_opti, discr_opti, train_dataloader, gamm
         # # Optimization of VAE loss
         vae_opti.zero_grad()
         vae_loss.backward(retain_graph = True)
-        # vae_opti.step()
 
-        # Sample z on the second batch
-        y2, z_mu2, z_log_var2 = factorvae(batch2)
-        z_sample2 = factorvae.sampling(z_mu2, z_log_var2)
+        # # Sample z on the second batch
+        # y2, z_mu2, z_log_var2 = factorvae(batch2)
+        # z_sample2 = factorvae.sampling(z_mu2, z_log_var2)
 
-        # Permute z
-        z_permuted = permute_dims(z_sample2).detach()
+        # # Permute z
+        # z_permuted = permute_dims(z_sample2).detach()
 
-        # Loss of the discriminator
-        discr_z2 = discriminator(z_permuted)
-        #discr_z1_copy = discr_z1.clone().detach()
-        #discr_z1_copy = discr_z1.clone()
-        discr_loss = discriminator.discr_loss(discr_z1, discr_z2)
-        epoch_discr_loss += discr_loss.item()
+        # # Loss of the discriminator
+        # discr_z2 = discriminator(z_permuted)
+        # discr_loss = discriminator.discr_loss(discr_z1, discr_z2)
+        # epoch_discr_loss += discr_loss.item()
 
-        # # Optimization of Discriminator loss
+        # Optimization of Discriminator loss
         discr_opti.zero_grad()
-        discr_loss.backward()
-        # discr_opti.step()
+        #discr_loss.backward()
 
         # Optimization of both losses
-        # vae_opti.zero_grad()
-        # discr_opti.zero_grad()
-        # total_loss = vae_loss + discr_loss
-        # total_loss.backward()
         vae_opti.step()
-        discr_opti.step()
+        #discr_opti.step()
 
 
     epoch_vae_loss /= len(train_dataloader)
