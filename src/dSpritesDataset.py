@@ -1,5 +1,6 @@
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
+import torch
 from PIL import Image
 import numpy as np
 from torch.utils.data import random_split
@@ -20,6 +21,10 @@ class dSpritesDataset(Dataset):
             img = self.transform(img)
         return img
 
+class RescaleBinaryImage:
+    def __call__(self, tensor):
+        return tensor / torch.max(tensor)
+
 
 def get_dataloaders(dataset_path, batch_size = 64) :
 
@@ -30,7 +35,12 @@ def get_dataloaders(dataset_path, batch_size = 64) :
     # Load dataset
     dataset_zip = np.load(dataset_path, encoding='bytes')
     imgs = dataset_zip['imgs']
-    imgs_train, imgs_test = random_split(imgs, lengths=(0.7, 0.3))
+
+    dsprites = dSpritesDataset(imgs, transform=transform)
+
+    subset_size = 15000
+    dsprites_small = random_split(dsprites, [subset_size, len(imgs)-subset_size])[0]
+    imgs_train, imgs_test = random_split(dsprites_small, [0.8, 0.2])
 
     # Build dataset
     train_dataset = dSpritesDataset(imgs_train, transform = transform)
