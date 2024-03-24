@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import argparse
 import os
 import torch
+import json
 
 from src.utils import load_parameters
 from src.FactorVAE import FactorVAE, Discriminator
@@ -14,19 +15,28 @@ def main(checkpoint_dir, params, save_fig_path, subset = True, plot_losses = Tru
         # Plot losses
 
         epochs = [i for i in range(100)]
-        train_vae_losses = []
-        train_discr_losses = []
-        test_vae_losses = []
-        test_discr_losses = []
+        # train_vae_losses = []
+        # train_discr_losses = []
+        # test_vae_losses = []
+        # test_discr_losses = []
 
 
-        for epoch in epochs : 
-            cp_file = f'checkpoint_epoch_{epoch}.pth'
-            checkpoint = torch.load(os.path.join(checkpoint_dir, cp_file))
-            train_vae_losses.append(checkpoint['epoch_vae_loss'])
-            train_discr_losses.append(checkpoint['epoch_discr_loss'])
-            test_vae_losses.append(checkpoint['test_epoch_vae_loss'])
-            test_discr_losses.append(checkpoint['test_epoch_discr_loss'])
+        # for epoch in epochs : 
+        #     cp_file = f'checkpoint_epoch_{epoch}.pth'
+        #     checkpoint = torch.load(os.path.join(checkpoint_dir, cp_file))
+        #     train_vae_losses.append(checkpoint['epoch_vae_loss'])
+        #     train_discr_losses.append(checkpoint['epoch_discr_loss'])
+        #     test_vae_losses.append(checkpoint['test_epoch_vae_loss'])
+        #     test_discr_losses.append(checkpoint['test_epoch_discr_loss'])
+
+        with open(os.path.join(checkpoint_dir, 'losses'), 'r') as f:
+            data = json.load(f)
+    
+        train_vae_losses = data['train_vae_losses']
+        train_discr_losses = data['train_discr_losses']
+        test_vae_losses = data['test_vae_losses']
+        test_discr_losses = data['test_discr_losses']
+
 
         # Create subplots with 1 row and 2 columns
         fig, axs = plt.subplots(1, 2, figsize=(10, 5))
