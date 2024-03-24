@@ -7,6 +7,7 @@ from src.utils import load_parameters
 import argparse
 import numpy as np
 import os
+import json
 
 #import matplotlib.pyplot as plt
 import torch
@@ -47,6 +48,11 @@ def main(params, device, subset) :
                        betas = (params['discr']['discr_beta1'], params['discr']['discr_beta2']))
     
 
+    train_vae_losses = []
+    train_discr_losses = []
+    test_vae_losses = []
+    test_discr_losses = []
+    
     for epoch in range(params['nb_epochs']) : 
         print(f'========== EPOCH {epoch} ============ ')
 
@@ -61,6 +67,9 @@ def main(params, device, subset) :
                                                 device)
         print(f'TRAINING : VAE loss: {train_vae_loss:.2f}; Discriminator loss: {train_discr_loss:.2f}')
 
+        train_vae_losses.append(train_vae_loss)
+        train_discr_losses.append(train_discr_loss)
+
         # Testing 
         test_vae_loss, test_discr_loss = test(factorvae, 
                                               discriminator, 
@@ -70,23 +79,36 @@ def main(params, device, subset) :
                                               device)
         
         print(f'TESTING : VAE loss: {test_vae_loss:.2f}; Discriminator loss: {test_discr_loss:.2f}')
+        test_vae_losses.append(test_vae_loss)
+        test_discr_losses.append(test_discr_loss)
+
+
 
         # Save model checkpoint
 
-        print("SAVE MODEL")
-        torch.save({
-            'epoch': epoch,
-            'vae_state_dict': factorvae.state_dict(),
-            'discr_state_dict' : discriminator.state_dict(),
-            'opti_vae_state_dict': vae_opti.state_dict(),
-            'opti_discr_state_dict' : discr_opti.state_dict(),
-            'epoch_vae_loss': train_vae_loss,
-            'epoch_discr_loss' : train_discr_loss,
-            'test_epoch_vae_loss' : test_vae_loss,
-            'test_epoch_discr_loss' : test_discr_loss,
-        }, os.path.join(params['save_model_path'], f"checkpoint_epoch_{epoch}.pth"))
+        if epoch % 10 == 0 or epoch == params['nb_epochs'] - 1: 
+            print("SAVE MODEL")
+            torch.save({
+                'epoch': epoch,
+                'vae_state_dict': factorvae.state_dict(),
+                'discr_state_dict' : discriminator.state_dict(),
+                'opti_vae_state_dict': vae_opti.state_dict(),
+                'opti_discr_state_dict' : discr_opti.state_dict(),
+                'epoch_vae_loss': train_vae_loss,
+                'epoch_discr_loss' : train_discr_loss,
+                'test_epoch_vae_loss' : test_vae_loss,
+                'test_epoch_discr_loss' : test_discr_loss,
+            }, os.path.join(params['save_model_path'], f"checkpoint_epoch_{epoch}.pth"))
 
-
+    # Save losses
+    data = {
+        'train_vae_loss': train_vae_loss,
+        'train_discr_loss' : train_discr_loss,
+        'test_vae_loss' : test_vae_loss,
+        'test_discr_loss' : test_discr_loss,
+    }
+    with open(os.path.join(params['save_model_path'], "losses"), 'w') as f:
+        json.dump(data, f)
 
 if __name__ == '__main__' : 
 
@@ -94,7 +116,7 @@ if __name__ == '__main__' :
     parser.add_argument('-root_path', default = 'C:/Users/Utilisateur/Documents/MVA/DELIRES/Projet/DELIRES-VAE-Disentanglement')
     parser.add_argument('-config_path', default = '/src/config_factorvae.yaml')
     parser.add_argument('-device')
-    parser.add_argument('-subset', default = True)
+    parser.add_argument('-subset', default = False)
     args = parser.parse_args()
 
     params = load_parameters(args.root_path + args.config_path)

@@ -11,9 +11,6 @@ def train(factorvae, discriminator, vae_opti, discr_opti, train_dataloader, gamm
     epoch_discr_loss = 0
 
     for i, double_batch in enumerate(train_dataloader) : 
-        if i % 10 == 0 : 
-            print(f'Current epoch VAE loss: {epoch_vae_loss}')
-            print(f'Current epoch Discr loss: {epoch_discr_loss}')
 
         # Split the double batch into two batches
         double_batch = double_batch.to(device)
