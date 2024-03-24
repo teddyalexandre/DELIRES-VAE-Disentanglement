@@ -128,6 +128,16 @@ class FactorVAE(nn.Module):
         z = self.sampling(z_mu, z_log_var)
         y = self.decoder(z)
         return y, z_mu, z_log_var
+    
+    def encode(self, x) : 
+        z_mu, z_log_var = self.encoder(x)
+        return z_mu, z_log_var
+    
+    def decode(self, z_mu, z_log_var) : 
+        z = self.sampling(z_mu, z_log_var)
+        y = self.decoder(z)
+        return y
+
 
 
     def loss_function(self, x, y, mu, log_var) : 
