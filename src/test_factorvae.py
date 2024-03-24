@@ -50,20 +50,20 @@ def test(factorvae, discriminator, test_dataloader, gamma, batch_size, device) :
             test_epoch_discr_loss += test_discr_loss.item()
 
             # Plot reconstruction
-            if i % 10 == 0 : 
-                n = 10
-                for j in range(n):
-                    print("original unique")
-                    print(test_batch1[j].unique())
-                    print("reconstruction unique")
-                    print(test_y[j].unique())
-                    plt.subplot(2, n, j + 1)
-                    plt.imshow(test_batch1[j].permute(1,2,0), cmap='gray')
-                    plt.axis('off')
-                    plt.subplot(2, n, j + 1 + n)
-                    plt.imshow(test_y[j].permute(1,2,0), cmap='gray')
-                    plt.axis('off')
-                plt.show()
+            # if i % 10 == 0 : 
+            #     n = 10
+            #     for j in range(n):
+            #         print("original unique")
+            #         print(test_batch1[j].unique())
+            #         print("reconstruction unique")
+            #         print(test_y[j].unique())
+            #         plt.subplot(2, n, j + 1)
+            #         plt.imshow(test_batch1[j].permute(1,2,0), cmap='gray')
+            #         plt.axis('off')
+            #         plt.subplot(2, n, j + 1 + n)
+            #         plt.imshow(test_y[j].permute(1,2,0), cmap='gray')
+            #         plt.axis('off')
+            #     plt.show()
         
     test_epoch_vae_loss /= len(test_dataloader)
     test_epoch_discr_loss /= len(test_dataloader) 

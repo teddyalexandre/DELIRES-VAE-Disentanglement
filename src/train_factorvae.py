@@ -33,25 +33,25 @@ def train(factorvae, discriminator, vae_opti, discr_opti, train_dataloader, gamm
         vae_opti.zero_grad()
         vae_loss.backward(retain_graph = True)
 
-        # # Sample z on the second batch
-        # y2, z_mu2, z_log_var2 = factorvae(batch2)
-        # z_sample2 = factorvae.sampling(z_mu2, z_log_var2)
+        # Sample z on the second batch
+        y2, z_mu2, z_log_var2 = factorvae(batch2)
+        z_sample2 = factorvae.sampling(z_mu2, z_log_var2)
 
-        # # Permute z
-        # z_permuted = permute_dims(z_sample2).detach()
+        # Permute z
+        z_permuted = permute_dims(z_sample2).detach()
 
-        # # Loss of the discriminator
-        # discr_z2 = discriminator(z_permuted)
-        # discr_loss = discriminator.discr_loss(discr_z1, discr_z2)
-        # epoch_discr_loss += discr_loss.item()
+        # Loss of the discriminator
+        discr_z2 = discriminator(z_permuted)
+        discr_loss = discriminator.discr_loss(discr_z1, discr_z2)
+        epoch_discr_loss += discr_loss.item()
 
         # Optimization of Discriminator loss
         discr_opti.zero_grad()
-        #discr_loss.backward()
+        discr_loss.backward()
 
         # Optimization of both losses
         vae_opti.step()
-        #discr_opti.step()
+        discr_opti.step()
 
 
     epoch_vae_loss /= len(train_dataloader)
