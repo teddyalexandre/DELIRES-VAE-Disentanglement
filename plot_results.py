@@ -11,6 +11,8 @@ from src.dSpritesDataset import get_dataloaders
 
 def main(checkpoint_dir, params, save_fig_path, subset = True, plot_losses = True, reconstitutions = True) : 
     
+    plot_losses = False 
+
     if plot_losses : 
         # Plot losses
 
@@ -64,8 +66,8 @@ def main(checkpoint_dir, params, save_fig_path, subset = True, plot_losses = Tru
     if reconstitutions : 
         # Plot reconstitution
             
-        last_cp_file = os.path.join(checkpoint_dir, f'checkpoint_epoch_99.pth')
-        last_checkpoint = torch.load(last_cp_file)
+        last_cp_file = os.path.join(checkpoint_dir, f'checkpoint_epoch_50.pth')
+        last_checkpoint = torch.load(last_cp_file, map_location=torch.device('cpu'))
 
         factorvae = FactorVAE(params['factorvae']['input_dim'],
                             params['factorvae']['h_dim1'],
@@ -116,13 +118,13 @@ if __name__ == '__main__' :
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-root_path', default = 'C:/Users/Utilisateur/Documents/MVA/DELIRES/Projet/DELIRES-VAE-Disentanglement')
-    parser.add_argument('-checkpoint_dir', default = 'C:/Users/Utilisateur/Documents/MVA/DELIRES/Projet/DELIRES-VAE-Disentanglement/models_checkpoints/factorvae/with_discr')
+    parser.add_argument('-checkpoint_dir', default = 'C:/Users/Utilisateur/Documents/MVA/DELIRES/Projet/DELIRES-VAE-Disentanglement/models_checkpoints/factorvae/all_with_discr_lr_1e-4_1e-4')
     parser.add_argument('-config_path', default = '/src/config_factorvae.yaml')
     parser.add_argument('-plot_losses', default = True)
     parser.add_argument('-reconstitutions', default = True)
     parser.add_argument('-device')
-    parser.add_argument('-subset', default = True)
-    parser.add_argument('-save_fig_path', default = "C:\Users\Utilisateur\Documents\MVA\DELIRES\Projet\DELIRES-VAE-Disentanglement\images")
+    parser.add_argument('-subset', default = False)
+    parser.add_argument('-save_fig_path', default = "C:/Users/Utilisateur/Documents/MVA/DELIRES/Projet/DELIRES-VAE-Disentanglement/images/all_with_discr_lr_1e-4_1e-4")
     
     args = parser.parse_args()
 
