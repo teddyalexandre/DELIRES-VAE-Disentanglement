@@ -14,11 +14,11 @@ from torch.optim import AdamW
 from torch import autograd
 
 
-def main(params, device) : 
+def main(params, device, subset) : 
 
 
     # Get dataloaders
-    train_dataloader, test_dataloader = get_dataloaders(params['dataset_path'], 2*params['batch_size'])
+    train_dataloader, test_dataloader = get_dataloaders(params['dataset_path'], 2*params['batch_size'], subset)
 
     #Define FactorVAE
     factorvae = FactorVAE(params['factorvae']['input_dim'],
@@ -94,6 +94,7 @@ if __name__ == '__main__' :
     parser.add_argument('-root_path', default = 'C:/Users/Utilisateur/Documents/MVA/DELIRES/Projet/DELIRES-VAE-Disentanglement')
     parser.add_argument('-config_path', default = '/src/config_factorvae.yaml')
     parser.add_argument('-device')
+    parser.add_argument('-subset', default = True)
     args = parser.parse_args()
 
     params = load_parameters(args.root_path + args.config_path)
@@ -105,4 +106,4 @@ if __name__ == '__main__' :
     params['save_model_path'] = args.root_path + params['save_model_path']
     params['dataset_path'] = args.root_path + params['dataset_path']
 
-    main(params, device)
+    main(params, device, args.subset)

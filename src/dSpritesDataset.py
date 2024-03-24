@@ -26,7 +26,7 @@ class RescaleBinaryImage:
         return tensor / torch.max(tensor)
 
 
-def get_dataloaders(dataset_path, batch_size = 64) :
+def get_dataloaders(dataset_path, batch_size = 64, subset = True) :
 
     transform = transforms.Compose([
         transforms.ToTensor(),
@@ -39,10 +39,13 @@ def get_dataloaders(dataset_path, batch_size = 64) :
 
     dsprites = dSpritesDataset(imgs, transform=transform)
 
-    subset_size = 15000
-    dsprites_small = random_split(dsprites, [subset_size, len(imgs)-subset_size])[0]
-    imgs_train, imgs_test = random_split(dsprites_small, [0.8, 0.2])
+    if subset : 
+        subset_size = 15000
+        dsprites_small = random_split(dsprites, [subset_size, len(imgs)-subset_size])[0]
+        imgs_train, imgs_test = random_split(dsprites_small, [0.8, 0.2])
 
+    else : 
+        imgs_train, imgs_test = random_split(dsprites, [0.8, 0.2])
 
     # Build dataloaders
     train_dataloader = DataLoader(imgs_train, batch_size = batch_size, shuffle = True)

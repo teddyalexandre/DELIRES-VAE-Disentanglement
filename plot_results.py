@@ -8,7 +8,7 @@ from src.FactorVAE import FactorVAE, Discriminator
 from src.dSpritesDataset import get_dataloaders
 
 
-def main(checkpoint_dir, params, plot_losses = True, reconstitutions = True) : 
+def main(checkpoint_dir, params, save_fig_path, subset = True, plot_losses = True, reconstitutions = True) : 
     
     if plot_losses : 
         # Plot losses
@@ -47,6 +47,8 @@ def main(checkpoint_dir, params, plot_losses = True, reconstitutions = True) :
         plt.tight_layout()
 
         # Show the plot
+        loss_path = os.path.join(save_fig_path, "losses")
+        plt.savefig(loss_path)
         plt.show()
 
     if reconstitutions : 
@@ -76,7 +78,7 @@ def main(checkpoint_dir, params, plot_losses = True, reconstitutions = True) :
 
         # Load test dataset
         params['dataset_path'] = args.root_path + params['dataset_path']
-        _, test_dataloader = get_dataloaders(params['dataset_path'], 2*params['batch_size'])
+        _, test_dataloader = get_dataloaders(params['dataset_path'], 2*params['batch_size'], subset = subset)
 
         for i, test_double_batch in enumerate(test_dataloader) : 
             with torch.no_grad() : 
@@ -94,6 +96,8 @@ def main(checkpoint_dir, params, plot_losses = True, reconstitutions = True) :
                     plt.subplot(2, n, j + 1 + n)
                     plt.imshow(test_y[j].permute(1,2,0), cmap='gray')
                     plt.axis('off')
+                reconstitution_path = os.path.join(save_fig_path, f'reconstitution_{i}')
+                plt.savefig(reconstitution_path)
                 plt.show()
 
 
@@ -107,6 +111,8 @@ if __name__ == '__main__' :
     parser.add_argument('-plot_losses', default = True)
     parser.add_argument('-reconstitutions', default = True)
     parser.add_argument('-device')
+    parser.add_argument('-subset', default = True)
+    parser.add_argument('-save_fig_path', default = "C:\Users\Utilisateur\Documents\MVA\DELIRES\Projet\DELIRES-VAE-Disentanglement\images")
     
     args = parser.parse_args()
 
@@ -116,4 +122,4 @@ if __name__ == '__main__' :
     else : 
         device = args.device
 
-    main(args.checkpoint_dir, params, args.plot_losses, args.reconstitutions)
+    main(args.checkpoint_dir, params, args.save_fig_path, args.subset, args.plot_losses, args.reconstitutions)
