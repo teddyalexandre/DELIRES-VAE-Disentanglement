@@ -19,12 +19,8 @@ def find_image(latents_classes, v):
 
 def main(root_path, checkpoint_dir, params) : 
 
-    file_path = os.path.join(root_path, 'classifier_data', 'datapoints.pt')
-    print(file_path)
-
     last_cp_file = os.path.join(checkpoint_dir, f'checkpoint_epoch_99.pth')
     last_checkpoint = torch.load(last_cp_file, map_location=torch.device('cpu'))
-
 
     factorvae = FactorVAE(params['factorvae']['input_dim'],
                         params['factorvae']['h_dim1'],
@@ -45,7 +41,7 @@ def main(root_path, checkpoint_dir, params) :
     
     discriminator.load_state_dict(last_checkpoint['discr_state_dict'])
 
-    params['dataset_path'] = root_path + params['dataset_path']
+
     imgs, latents_classes, latents_values = get_data_with_factors(params['dataset_path'], 2*params['batch_size'])
 
     # Compute s
@@ -59,10 +55,14 @@ def main(root_path, checkpoint_dir, params) :
     subset_size = 15000
     dsprites_small = random_split(dsprites, [subset_size, len(imgs)-subset_size])[0]
     dataloader = DataLoader(dsprites_small, batch_size = 512) 
+
+    nb_samples = 0
     for i, batch in enumerate(dataloader) : 
-        batch_latents, _ = factorvae.encode(batch)
-        empirical_std_dev = torch.add(empirical_std_dev, torch.std(batch_latents, dim = 0) / len(batch))
+        nb_samples += len(batch)
+        _, z_log_var = factorvae.encode(batch)
+        empirical_std_dev = empirical_std_dev + torch.sqrt(torch.exp(z_log_var)).sum(axis=0)
     
+    empirical_std_dev =  empirical_std_dev / nb_samples
     print("empirical std dev")
     print(empirical_std_dev)
 
@@ -246,7 +246,7 @@ if __name__ == '__main__' :
     else : 
         device = args.device
 
-    #main(args.root_path, args.checkpoint_dir, params)
-    #classifier_metric(args.root_path)
+    main(args.root_path, args.checkpoint_dir, params)
+    classifier_metric(args.root_path)
     
     plot_latent_traversals_each_dim(args.root_path, args.checkpoint_dir, params, device)
