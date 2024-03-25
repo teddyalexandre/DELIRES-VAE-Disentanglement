@@ -5,12 +5,12 @@ from torch.utils.data import DataLoader, Dataset
 import numpy as np
 from torchvision import transforms
 from torch.utils.data import random_split
-
+import matplotlib.pyplot as plt
 
 
 from src.utils import load_parameters
 from src.FactorVAE import FactorVAE, Discriminator
-from src.dSpritesDataset import get_data_with_factors, dSpritesDataset, dSpritesDataset_classes, RescaleBinaryImage
+from src.dSpritesDataset import get_dataloaders, get_data_with_factors, dSpritesDataset, dSpritesDataset_classes, RescaleBinaryImage
 
 
 def find_image(latents_classes, v):
@@ -151,6 +151,76 @@ def classifier_metric(root_path) :
 
     return error_rate
 
+def plot_latent_traversals_each_dim(root_path, checkpoint_dir, params, device, n=15, z_dim=10, traversal_range=3):
+
+    # Load trained factorVAE
+    last_cp_file = os.path.join(checkpoint_dir, f'checkpoint_epoch_99.pth')
+    last_checkpoint = torch.load(last_cp_file, map_location=torch.device('cpu'))
+
+    factorvae = FactorVAE(params['factorvae']['input_dim'],
+                        params['factorvae']['h_dim1'],
+                        params['factorvae']['h_dim2'], 
+                        (params['factorvae']['kernel_size'], params['factorvae']['kernel_size']),
+                        params['factorvae']['stride'],
+                        params['factorvae']['fc_dim'],
+                        params['factorvae']['output_dim'],
+                        device).to(device)
+    
+    factorvae.load_state_dict(last_checkpoint['vae_state_dict'])
+
+    # Load data
+    train_dataloader, test_dataloader = get_dataloaders(params['dataset_path'], 2*params['batch_size'], subset = True)
+
+    factorvae.eval()
+    with torch.no_grad():
+        # Get mean and var of each dimension of the latent space
+
+        means = torch.zeros(z_dim)
+        log_vars = torch.zeros(z_dim)
+        nb_samples = 0
+
+        for i, batch in enumerate(test_dataloader) : 
+            nb_samples += len(batch)
+            z_mu, z_log_var = factorvae.encode(batch)
+            means = means + z_mu.sum(axis=0)
+            log_vars = log_vars + z_log_var.sum(axis=0)
+        
+        means = means.div(nb_samples)
+        log_vars = log_vars.div(nb_samples)
+
+        print(means)
+        print(log_vars)
+
+
+        # Generate fixed latent codes
+        #fixed_z = torch.randn(n, z_dim).to(device)
+        fixed_z = factorvae.sampling(means, log_vars)
+        fixed_z_repeated = fixed_z.repeat(n,1)
+        
+        print(fixed_z_repeated)
+        # Create traversal values
+        #traversal_values = torch.linspace(-traversal_range, traversal_range, n).to(device)
+        
+        # Loop over each dimension and create traversed latent codes
+        for fixed_dim in range(z_dim):
+            latent_codes = fixed_z_repeated.clone()
+            std_dev = torch.sqrt(torch.exp(log_vars[fixed_dim]))
+            traversal_values = torch.linspace(means[fixed_dim] - 100 * std_dev, means[fixed_dim] + 100 * std_dev, n).to(device)
+            print(traversal_values)
+            for i in range(n):
+                latent_codes[i, fixed_dim] = traversal_values[i]
+            
+            # Generate images from traversed latent codes
+            reconstructions = factorvae.decoder(latent_codes)
+            
+            # Display
+            plt.figure(figsize=(n, 2))
+            for i in range(n):
+                plt.subplot(2, n, i + 1)
+                plt.imshow(reconstructions[i].cpu().permute(1, 2, 0).squeeze(), cmap='gray')
+                plt.axis('off')
+            plt.suptitle(f'Latent Dimension {fixed_dim+1}')
+            plt.show()
 
         
 
@@ -170,10 +240,13 @@ if __name__ == '__main__' :
     args = parser.parse_args()
 
     params = load_parameters(args.root_path + args.config_path)
+    params['dataset_path'] = args.root_path + params['dataset_path']
     if args.device is None : 
         device = params['device']
     else : 
         device = args.device
 
-    main(args.root_path, args.checkpoint_dir, params)
-    classifier_metric(args.root_path)
+    #main(args.root_path, args.checkpoint_dir, params)
+    #classifier_metric(args.root_path)
+    
+    plot_latent_traversals_each_dim(args.root_path, args.checkpoint_dir, params, device)
