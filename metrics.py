@@ -22,7 +22,7 @@ def main(root_path, checkpoint_dir, params) :
     file_path = os.path.join(root_path, 'classifier_data', 'datapoints.pt')
     print(file_path)
 
-    last_cp_file = os.path.join(checkpoint_dir, f'checkpoint_epoch_50.pth')
+    last_cp_file = os.path.join(checkpoint_dir, f'checkpoint_epoch_99.pth')
     last_checkpoint = torch.load(last_cp_file, map_location=torch.device('cpu'))
 
 
@@ -95,29 +95,64 @@ def main(root_path, checkpoint_dir, params) :
         variances = torch.var(normalized_latents, dim = 0)
         argmin_var = torch.argmin(variances)
 
-        data_points[point][0] = fixed_factor
-        data_points[point][1] = argmin_var
+        data_points[point][0] = argmin_var
+        data_points[point][1] = fixed_factor
     
-    file_path = os.path.join(root_path, 'classifier_data', 'datapoints.pt')
+    file_path = os.path.join(root_path, 'classifier_data', 'datapoints_checkpoint_99.pt')
     torch.save(data_points, file_path)
 
 
+def get_classifier(data_points) : 
+    print('unique fixed factors')
+    print(data_points[:,1].unique())
+    print('unique d')
+    print(data_points[:,0].unique())
+    nb_j = int(data_points[:, 0].max().item() + 1)
+    nb_k = int(data_points[:, 1].max().item() + 1)
+
+    print(nb_j)
+    print(nb_k)
+
+    V = torch.zeros((nb_j, nb_k), dtype=torch.int)
+
+    for i in range(data_points.size(0)):
+        j, k = data_points[i]
+        k = int(k.item())
+        j = int(j.item())
+        V[j][k] += 1
+
+    classifier = torch.zeros(nb_j)
+    for j in range(nb_j) : 
+        classifier[j] = torch.argmax(V[j])
+    
+    print('Classifier')
+    print(classifier)
+    
+    return classifier
+
+def classifier_metric(root_path) :
+    file_path = os.path.join(root_path, 'classifier_data', 'datapoints_checkpoint_99.pt')
+    data_points = torch.load(file_path)
+
+    classifier = get_classifier(data_points)
+
+    error_rate = 0
+
+    for i in range(data_points.size(0)):
+        j, k = data_points[i]
+        k = int(k.item())
+        j = int(j.item())
+        k_pred = classifier[j] 
+        if k != k_pred : 
+            error_rate += 1
+
+    error_rate = error_rate / data_points.size(0)
+    print(error_rate)
+
+    return error_rate
+
 
         
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -141,3 +176,4 @@ if __name__ == '__main__' :
         device = args.device
 
     main(args.root_path, args.checkpoint_dir, params)
+    classifier_metric(args.root_path)
