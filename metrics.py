@@ -1,7 +1,9 @@
 import argparse
 import os
 import torch
-from torch.utils.data import DataLoader, Dataset
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, Dataset, TensorDataset
 import numpy as np
 from torchvision import transforms
 from torch.utils.data import random_split
@@ -151,6 +153,124 @@ def classifier_metric(root_path) :
 
     return error_rate
 
+def beta_metrics(root_path, checkpoint_dir, params) :
+    last_cp_file = os.path.join(checkpoint_dir, f'checkpoint_epoch_99.pth')
+    last_checkpoint = torch.load(last_cp_file, map_location=torch.device('cpu'))
+
+    factorvae = FactorVAE(params['factorvae']['input_dim'],
+                        params['factorvae']['h_dim1'],
+                        params['factorvae']['h_dim2'], 
+                        (params['factorvae']['kernel_size'], params['factorvae']['kernel_size']),
+                        params['factorvae']['stride'],
+                        params['factorvae']['fc_dim'],
+                        params['factorvae']['output_dim'],
+                        device).to(device)
+    
+    factorvae.load_state_dict(last_checkpoint['vae_state_dict']) 
+    factorvae.eval()
+
+    imgs, latents_classes, latents_values = get_data_with_factors(params['dataset_path'], 2*params['batch_size'])
+
+    # Build classifier dataset
+
+    nb_data_points = 200 # we build a dataset of 10 000 data points
+    L = 50 # number of images generated for each data point
+    K = 6
+    data_diffs = torch.zeros((nb_data_points, 10))
+    data_classes = torch.zeros((nb_data_points))
+
+    for point in range(nb_data_points) : 
+        z_l = []
+        y = np.random.randint(0, K) # fixed factor
+        for l in range(L):
+            # Sample a pair v1,l , v2,l such that they agree on their yth value
+            v_1l = np.array([np.random.choice(np.unique(latents_classes[:,i])) for i in range(K)])
+            v_2l = np.array([np.random.choice(np.unique(latents_classes[:,i])) for i in range(K)])
+            v_1l[y] = v_2l[y]
+
+            # simulate the images corresponding to the pair v1,l , v2,l
+            idx_1 = np.where((latents_classes == v_1l).all(axis=1))[0]
+            idx_2 = np.where((latents_classes == v_2l).all(axis=1))[0]
+            
+            # get the images
+            imgs_1 = imgs[idx_1]
+            imgs_2 = imgs[idx_2]
+
+            z_1, _ = factorvae.encoder(torch.tensor(imgs_1, dtype=torch.float).view(1, 1, 64, 64).to(device))
+            z_2, _ = factorvae.encoder(torch.tensor(imgs_2, dtype=torch.float).view(1, 1, 64, 64).to(device))
+            z_1 = z_1.cpu().detach()
+            z_2 = z_2.cpu().detach()
+            z_diff = torch.abs(z_1 - z_2)
+            z_l.append(z_diff)
+        # compute the element-wise mean of the latent representation
+        z_l_tensor = torch.tensor(np.array(z_l), dtype=torch.float)
+        z_b_mean = torch.mean(z_l_tensor, dim=0)
+        data_diffs[point] = z_b_mean
+        data_classes[point] = y
+    
+    file_path_diffs = os.path.join(root_path, 'classifier_data', 'data_diffs_beta_metrics_checkpoint_99.pt')
+    torch.save(data_diffs, file_path_diffs)    
+    file_path_classes = os.path.join(root_path, 'classifier_data', 'data_classes_beta_metrics_checkpoint_99.pt')
+    torch.save(data_classes, file_path_classes)
+
+
+    classifier_dataset = TensorDataset(data_diffs, data_classes)
+    train_size = int(0.8 * len(classifier_dataset))
+    test_size = len(classifier_dataset) - train_size
+
+    classifier_train_dataset, classifier_test_dataset = random_split(classifier_dataset, [train_size, test_size])
+
+    classifier_traindataloader = DataLoader(classifier_train_dataset, batch_size=4, shuffle=False)
+    classifier_testdataloader = DataLoader(classifier_test_dataset, batch_size=4, shuffle=False)
+
+    classifier = nn.Sequential(
+        nn.Linear(10, 6),
+        nn.LogSoftmax(dim=1)
+    )
+
+    optimizer = optim.Adagrad(classifier.parameters(), lr=1e-2)
+    criterion = nn.NLLLoss()
+
+    epochs = 1000
+    train_losses = []
+    test_losses = []
+
+    for epoch in range(epochs):
+        classifier.train()
+        for inputs, labels in classifier_traindataloader:
+            optimizer.zero_grad()
+            outputs = classifier(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
+        if (epoch+1) % 10 == 0:
+            print(f"Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}")
+
+    classifier.eval()
+    with torch.no_grad():
+        correct = 0
+        total = 0
+        for inputs, labels in classifier_testdataloader:
+            inputs = inputs
+            outputs = classifier(inputs)
+            _, predicted_indices = torch.max(outputs, 1)
+            correct += (predicted_indices == labels).sum().item()
+            total += inputs.size(0)
+        
+        score = 100 * correct / total
+        print('Disentanglement metric score: %d %%' % (score))
+
+
+
+
+
+
+
+
+
+
+
 def plot_latent_traversals_each_dim(root_path, checkpoint_dir, params, device, n=15, z_dim=10, traversal_range=3):
 
     # Load trained factorVAE
@@ -246,7 +366,9 @@ if __name__ == '__main__' :
     else : 
         device = args.device
 
-    main(args.root_path, args.checkpoint_dir, params)
-    classifier_metric(args.root_path)
+    # main(args.root_path, args.checkpoint_dir, params)
+    # classifier_metric(args.root_path)
     
     plot_latent_traversals_each_dim(args.root_path, args.checkpoint_dir, params, device)
+        
+    #beta_metrics(args.root_path, args.checkpoint_dir, params)
