@@ -1,4 +1,4 @@
-Project AN2 - Disentanglement in variational autoencoders
+**Project AN2 - Disentanglement in variational autoencoders**
 
 This project aims at studying disentangled representations of the dSprites dataset given diverse generative factors (shape of the image, scale, positionX, positionY, orientation), using two diverse approaches :
 
