@@ -366,9 +366,9 @@ if __name__ == '__main__' :
     else : 
         device = args.device
 
-    # main(args.root_path, args.checkpoint_dir, params)
-    # classifier_metric(args.root_path)
+    main(args.root_path, args.checkpoint_dir, params)
+    classifier_metric(args.root_path)
     
     plot_latent_traversals_each_dim(args.root_path, args.checkpoint_dir, params, device)
         
-    #beta_metrics(args.root_path, args.checkpoint_dir, params)
+    beta_metrics(args.root_path, args.checkpoint_dir, params)
